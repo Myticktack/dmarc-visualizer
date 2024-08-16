@@ -1,27 +1,41 @@
 version: '3.5'
 services:
-  parsedmarc:
-    build: ./parsedmarc/
-    volumes:
-      - ./files:/input:ro
-      - ./output_files:/output
-    command: parsedmarc -c /parsedmarc.ini /input/* --debug
-    depends_on:
-      - elasticsearch
-    restart: on-failure
+ parsedmarc:
+  build: ./parsedmarc/
+  volumes:
+   - /opt/storage/docker/dmarc-visual/parsedmarc/files:/input:ro
+   - /opt/storage/docker/dmarc-visual/parsedmarc/output:/output
+   - /opt/storage/docker/dmarc-visual/parsedmarc/config:/config
+   - /opt/storage/docker/dmarc-visual/parsedmarc/GeoIP:/usr/share/GeoIP	  
+  command: parsedmarc -c /config/parsedmarc.ini /input/* --debug
+  depends_on:
+   - elasticsearch
+  restart: on-failure	  
+	  
+ elasticsearch:
+  image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+  environment:
+   - network.host=127.0.0.1
+   - http.host=0.0.0.0
+   - node.name=elasticsearch
+   - discovery.type=single-node
+   - discovery.seed_hosts=elasticsearch
+   - bootstrap.memory_lock=true
+   - xpack.security.enabled=false
+   - xpack.license.self_generated.type=basic
+  ports:
+   - 127.0.0.1:9200:9200
+  volumes:
+   - /opt/storage/docker/dmarc-visual/elastic/elastic_data:/usr/share/elasticsearch/data
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.5
-    environment:
-      - discovery.type=single-node
-    volumes:
-      - ./elastic_data:/usr/share/elasticsearch/data
-
-  grafana:
-    build: ./grafana/
-    ports:
-      - 3000:3000
-    user: root
-    environment:
-      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
-      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+ grafana:
+  build: ./grafana/
+  ports:
+   - 3000:3000
+  user: root
+  environment:
+    GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
+    GF_AUTH_ANONYMOUS_ENABLED: 'true'
+  volumes:
+   - /opt/storage/docker/dmarc-visual/grafana/provisioning:/etc/grafana/provisioning
+   - /opt/storage/docker/dmarc-visual/grafana/dashboards:/var/lib/grafana/dashboards
